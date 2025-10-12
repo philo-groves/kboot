@@ -1,0 +1,16 @@
+[package]
+name = "kboot"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+anyhow = "1.0.100"
+bootloader = "0.11.12"
+bootloader-boot-config = "0.11.12"
+ovmf-prebuilt = "0.1.0-alpha.1"
+log = "0.4.28"
+flexi_logger = "0.31.7"
+uuid = "1.18.1"
+serde = "1.0.228"
+serde_json = "1.0.145"
+stopwatch = "0.0.7"
