@@ -16,8 +16,18 @@ pub fn build_image(args: &Vec<String>) -> Result<()> {
     config.log_level = bootloader_boot_config::LevelFilter::Error;
 
     fs::create_dir_all(&build_directory)?;
-    UefiBoot::new(&executable_path)
-        .set_boot_config(&config)
+    let mut builder_binding = UefiBoot::new(&executable_path);
+    let mut builder = builder_binding
+        .set_boot_config(&config);
+
+    if args::has_ramdisk(args) {
+        let ramdisk_path = args::get_ramdisk_path(args)?;
+        if let Some(path) = ramdisk_path {
+            builder = builder.set_ramdisk(&path);
+        }
+    }
+
+    builder
         .create_disk_image(&image_path)?;
 
     Ok(())

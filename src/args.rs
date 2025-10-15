@@ -110,6 +110,26 @@ pub fn get_qemu_options(args: &Vec<String>) -> Result<Vec<String>> {
     Ok(qemu_options)
 }
 
+pub fn has_ramdisk(args: &Vec<String>) -> bool {
+    args.iter().any(|arg| arg == "--ramdisk")
+}
+
+pub fn get_ramdisk_path(args: &Vec<String>) -> Result<Option<PathBuf>> {
+    let ramdisk_index = args.iter().position(|arg| arg == "--ramdisk");
+    if let Some(index) = ramdisk_index {
+        let ramdisk_args = get_quoted_args(args, index + 1)
+            .map_err(|_| anyhow!("--ramdisk must be followed by a quoted path"))?;
+        
+        if ramdisk_args.len() != 1 {
+            return Err(anyhow!("--ramdisk must be followed by exactly one path"));
+        }
+
+        return Ok(Some(PathBuf::from(&ramdisk_args[0])));
+    }
+
+    Ok(None)
+}
+
 fn get_quoted_args(args: &Vec<String>, start_index: usize) -> Result<Vec<String>> {
     let mut combined = String::new();
     let mut in_quotes = false;
