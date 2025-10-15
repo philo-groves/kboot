@@ -15,15 +15,25 @@ pub fn run(args: &Vec<String>) -> Result<Duration> {
         std::process::exit(1);
     }
 
+    if args::has_qemu_options(args) {
+        log::info!("QEMU options detected: {}", args::get_qemu_options(args)?.join(" "));
+    }
+
     // prepare the arguments for running QEMU in Docker
     let mut run_args = RunArguments::default()?;
-    run_args.print();
 
     // if the executable is a test executable, add the test arguments
     if args::is_test(&args)? {
         run_args.qemu_test_args.extend(TEST_ARGUMENTS.iter().map(|s| s.to_string()));
         setup_test_output(&mut run_args)?;
     }
+
+    // if custom QEMU arguments are provided, use them
+    if args::has_qemu_options(args) {
+        run_args.qemu_run_args = args::get_qemu_options(args)?;
+    }
+
+    run_args.print();
 
     // run QEMU in Docker and capture the exit code
     let mut stopwatch = stopwatch::Stopwatch::start_new();
@@ -87,7 +97,7 @@ fn run_qemu(run_args: &RunArguments)-> Result<i32> {
         .arg("--device=/dev/net/tun")
         .args(["--cap-add", "NET_ADMIN"])
         // custom -bios file from ovmf_prebuilt crate (renamed to ovmf.fd for simplicity)
-        .arg("-e").arg(&format!("ARGUMENTS=-bios /ovmf.fd {}", run_args.qemu_test_args.join(" ")))
+        .arg("-e").arg(&format!("ARGUMENTS=-bios /ovmf.fd {} {}", run_args.qemu_run_args.join(" "), run_args.qemu_test_args.join(" ")))
         // run qemu in container using a specific version for stability, not latest
         .arg("qemux/qemu:7.12");
 
@@ -109,6 +119,7 @@ struct RunArguments {
     image_path: PathBuf,
     ovmf_path: PathBuf,
     testing_path: PathBuf,
+    qemu_run_args: Vec<String>,
     qemu_test_args: Vec<String>
 }
 
@@ -125,6 +136,7 @@ impl RunArguments {
             image_path,
             ovmf_path,
             testing_path,
+            qemu_run_args: vec![],
             qemu_test_args: vec![]
         })
     }
@@ -135,6 +147,7 @@ impl RunArguments {
         log::info!("Image path:     {}", self.image_path.display());
         log::info!("OVMF path:      {}", self.ovmf_path.display());
         log::info!("Testing path:   {}", self.testing_path.display());
+        log::info!("QEMU run args:  {:?}", self.qemu_run_args);
         log::info!("QEMU test args: {:?}", self.qemu_test_args);
         log::info!("========================================================");
     }

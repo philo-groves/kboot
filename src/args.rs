@@ -75,3 +75,64 @@ pub fn get_manifest_toml() -> Result<PathBuf> {
 pub fn is_no_ktest(args: &Vec<String>) -> bool {
     args.iter().any(|arg| arg == "--no-ktest")
 }
+
+pub fn has_qemu_options(args: &Vec<String>) -> bool {
+    let has_qemu_arg = args.iter().any(|arg| arg == "--qemu");
+    
+    let mut in_quotes = false;
+    for arg in args {
+        if arg.starts_with('"') {
+            in_quotes = true;
+        }
+        if in_quotes {
+            if arg.ends_with('"') {
+                in_quotes = false;
+                break;
+            }
+        }
+    }
+
+    let has_qemu_options = !in_quotes;
+    if has_qemu_arg && !has_qemu_options {
+        panic!("--qemu must be followed by quoted QEMU options");
+    }
+
+    has_qemu_arg && has_qemu_options
+}
+
+pub fn get_qemu_options(args: &Vec<String>) -> Result<Vec<String>> {
+    let qemu_index = args.iter().position(|arg| arg == "--qemu")
+        .ok_or_else(|| anyhow!("--qemu not found in arguments"))?;
+    
+    let qemu_options = get_quoted_args(args, qemu_index + 1)
+        .map_err(|_| anyhow!("--qemu must be followed by quoted QEMU options"))?;
+
+    Ok(qemu_options)
+}
+
+fn get_quoted_args(args: &Vec<String>, start_index: usize) -> Result<Vec<String>> {
+    let mut combined = String::new();
+    let mut in_quotes = false;
+
+    for arg in &args[start_index..] {
+        if arg.starts_with('"') {
+            in_quotes = true;
+        }
+        if in_quotes {
+            combined.push_str(arg);
+            combined.push(' ');
+        }
+        if arg.ends_with('"') {
+            break;
+        }
+    }
+
+    if !in_quotes {
+        return Err(anyhow!("Expected quoted arguments starting from index {}", start_index));
+    }
+
+    Ok(combined.trim().to_string()
+        .split(" ")
+        .map(|s| s.trim_start_matches("\"").trim_end_matches("\"").to_string())
+        .collect::<Vec<String>>())
+}
