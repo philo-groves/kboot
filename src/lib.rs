@@ -31,8 +31,8 @@ pub fn run() -> Result<()> {
 
 /// Simple startup logs to display information about the executable
 fn start_logger(args: &Vec<String>) -> Result<()> {
-    let manifest_dir = args::get_manifest_dir()?;
-    let log_file_path = manifest_dir.join(BUILD_DIRECTORY)
+    let workspace_dir = args::get_workspace_root(&args)?;
+    let log_file_path = workspace_dir.join(BUILD_DIRECTORY)
         .join("logs")
         .join(format!("kboot-{}.log", UUID.get().unwrap()));
     let file_spec = flexi_logger::FileSpec::default()
@@ -56,6 +56,7 @@ fn start_logger(args: &Vec<String>) -> Result<()> {
     log::info!("Executable file stem:        {}", args::get_file_stem(&args)?);
     log::info!("Cargo manifest directory:    {}", args::get_manifest_dir()?.display());
     log::info!("Cargo.toml file path:        {}", args::get_manifest_toml()?.display());
+    log::info!("Current working directory:   {}", args::get_workspace_root(&args)?.display());
     log::info!("========================================================");
 
     Ok(())

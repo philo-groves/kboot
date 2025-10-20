@@ -7,8 +7,8 @@ use crate::{args, BUILD_DIRECTORY};
 
 /// Build a UEFI disk image (*.img) that contains the specified executable.
 pub fn build_image(args: &Vec<String>) -> Result<()> {
-    let manifest_directory = args::get_manifest_dir()?;
-    let build_directory = manifest_directory.join(BUILD_DIRECTORY);
+    let workspace_directory = args::get_workspace_root(&args)?;
+    let build_directory = workspace_directory.join(BUILD_DIRECTORY);
     let image_path = build_directory.join("kernel.img");
     let executable_path = args::get_executable(args)?;
 

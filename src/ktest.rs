@@ -17,9 +17,9 @@ pub fn process_test_results(args: &Vec<String>, run_duration: Duration) -> Resul
     if !args::is_test(args)? { // ignore this for `cargo run` etc
         return Ok(());
     }
-    
-    let manifest_dir = args::get_manifest_dir()?;
-    let qemu_output_path = manifest_dir.join(BUILD_DIRECTORY)
+
+    let workspace_dir = args::get_workspace_root(&args)?;
+    let qemu_output_path = workspace_dir.join(BUILD_DIRECTORY)
         .join("testing")
         .join(format!("tests-{}.json", crate::UUID.get().unwrap()));
 
@@ -43,7 +43,7 @@ pub fn process_test_results(args: &Vec<String>, run_duration: Duration) -> Resul
         .ok_or_else(|| anyhow!("No test group found after processing test results"))?
         .read()
         .map_err(|_| anyhow!("Failed to acquire read lock on test group"))?;
-    let test_output_path = manifest_dir.join(BUILD_DIRECTORY)
+    let test_output_path = workspace_dir.join(BUILD_DIRECTORY)
         .join("testing")
         .join(format!("tests-{}.json", test_group.test_group));
     let test_output_file = fs::File::create(&test_output_path)?;

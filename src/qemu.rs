@@ -20,7 +20,7 @@ pub fn run(args: &Vec<String>) -> Result<Duration> {
     }
 
     // prepare the arguments for running QEMU in Docker
-    let mut run_args = RunArguments::default()?;
+    let mut run_args = RunArguments::default(args)?;
 
     // if the executable is a test executable, add the test arguments
     if args::is_test(&args)? {
@@ -124,9 +124,9 @@ struct RunArguments {
 }
 
 impl RunArguments {
-    fn default() -> Result<Self> {
-        let manifest_directory = args::get_manifest_dir()?;
-        let build_path = manifest_directory.join(BUILD_DIRECTORY);
+    fn default(args: &Vec<String>) -> Result<Self> {
+        let workspace_directory = args::get_workspace_root(&args)?;
+        let build_path = workspace_directory.join(BUILD_DIRECTORY);
         let image_path = build_path.join("kernel.img");
         let testing_path = build_path.join("testing");
         let ovmf_path = ovmf_prebuilt::ovmf_pure_efi();

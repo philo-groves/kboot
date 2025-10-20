@@ -1,8 +1,7 @@
 use anyhow::{anyhow, Result};
 use std::{env, path::PathBuf};
 
-/// Get the executable that should be packaged into an image 
-/// and ran in QEMU
+/// Get the executable that should be packaged into an image and ran in QEMU
 pub fn get_executable(args: &Vec<String>) -> Result<PathBuf> {
     let args_without_options: Vec<&String> = args.iter()
         .filter(|arg| !arg.starts_with('-'))
@@ -34,6 +33,24 @@ pub fn get_executable_parent(args: &Vec<String>) -> Result<PathBuf> {
     let parent = exe.parent().ok_or_else(|| anyhow!("Executable has no parent directory"))?;
     
     Ok(parent.to_path_buf())
+}
+
+/// Get the workspace root directory by traversing up from the executable path 
+/// until the "target" directory is found
+pub fn get_workspace_root(args: &Vec<String>) -> Result<PathBuf> {
+    let executable_binding = get_executable(args)?;
+    let mut executable_path = executable_binding.as_path();
+    while let Some(parent) = executable_path.parent() {
+        if parent.ends_with("target") {
+            if let Some(workspace_root) = parent.parent() {
+                return Ok(workspace_root.to_path_buf());
+            } else {
+                return Err(anyhow!("Workspace root not found"));
+            }
+        }
+        executable_path = parent;
+    }
+    Ok(executable_path.to_path_buf())
 }
 
 /// Determine whether the executable is a Rust doctest executable
@@ -72,10 +89,12 @@ pub fn get_manifest_toml() -> Result<PathBuf> {
     Ok(toml_path)
 }
 
+/// Determine whether ktest processing should be skipped
 pub fn is_no_ktest(args: &Vec<String>) -> bool {
     args.iter().any(|arg| arg == "--no-ktest")
 }
 
+/// Determine whether QEMU options have been provided
 pub fn has_qemu_options(args: &Vec<String>) -> bool {
     let has_qemu_arg = args.iter().any(|arg| arg == "--qemu");
     
@@ -100,6 +119,7 @@ pub fn has_qemu_options(args: &Vec<String>) -> bool {
     has_qemu_arg && has_qemu_options
 }
 
+/// Get the QEMU options provided after the `--qemu` flag
 pub fn get_qemu_options(args: &Vec<String>) -> Result<Vec<String>> {
     let qemu_index = args.iter().position(|arg| arg == "--qemu")
         .ok_or_else(|| anyhow!("--qemu not found in arguments"))?;
@@ -110,10 +130,12 @@ pub fn get_qemu_options(args: &Vec<String>) -> Result<Vec<String>> {
     Ok(qemu_options)
 }
 
+/// Determine whether a ramdisk path has been provided
 pub fn has_ramdisk(args: &Vec<String>) -> bool {
     args.iter().any(|arg| arg == "--ramdisk")
 }
 
+/// Get the ramdisk path provided after the `--ramdisk` flag
 pub fn get_ramdisk_path(args: &Vec<String>) -> Result<Option<PathBuf>> {
     let ramdisk_index = args.iter().position(|arg| arg == "--ramdisk");
     if let Some(index) = ramdisk_index {
@@ -130,6 +152,7 @@ pub fn get_ramdisk_path(args: &Vec<String>) -> Result<Option<PathBuf>> {
     Ok(None)
 }
 
+/// Helper function to extract quoted arguments starting from a given index
 fn get_quoted_args(args: &Vec<String>, start_index: usize) -> Result<Vec<String>> {
     let mut combined = String::new();
     let mut in_quotes = false;
