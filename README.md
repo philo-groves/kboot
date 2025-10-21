@@ -6,13 +6,17 @@ This runner will package the given Rust binary into a bootable UEFI image file, 
 
 **x86_64 is the only currently supported architecture**
 
-Example: https://github.com/philo-groves/example-kernel-kboot-ktest
+## Examples
+
+Single Crate: https://github.com/philo-groves/example-kernel-kboot-ktest
+
+Workspace: https://github.com/philo-groves/example-kernel-kboot-ktest-multicrate
 
 ## Requirements
 - A Rust-based kernel
 - Docker
 
-Nothing else! You do not even need to have QEMU installed; it will be managed via Docker.
+Nothing else! You do not even need QEMU to be installed; it will be managed via Docker.
 
 ## Usage
 
