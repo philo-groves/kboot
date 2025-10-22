@@ -101,7 +101,7 @@ fn process_test_group_json(json: &serde_json::Value, run_duration: Duration) -> 
         total: test_count,
         passed: 0,
         failed: 0,
-        missed: 0,
+        ignored: 0,
         duration: run_duration.as_millis() as u64
     };
 
@@ -154,12 +154,12 @@ fn process_summary() -> Result<()> {
         .map_err(|_| anyhow!("Failed to acquire write lock on test group"))?;
 
     test_group.summary.passed = test_group.modules.iter()
-        .map(|m| m.tests.iter().filter(|t| t.result == "ok").count() as u64)
+        .map(|m| m.tests.iter().filter(|t| t.result == "pass").count() as u64)
         .sum();
     test_group.summary.failed = test_group.modules.iter()
         .map(|m| m.tests.iter().filter(|t| t.result == "fail").count() as u64)
         .sum();
-    test_group.summary.missed = test_group.summary.total
+    test_group.summary.ignored = test_group.summary.total
         .saturating_sub(test_group.summary.passed + test_group.summary.failed);
     
     Ok(())
@@ -197,7 +197,7 @@ struct TestSummary {
     total: u64,
     passed: u64,
     failed: u64,
-    missed: u64,
+    ignored: u64,
     duration: u64
 }
 
