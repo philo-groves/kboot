@@ -4,6 +4,7 @@ use uuid::Uuid;
 
 mod builder;
 mod args;
+mod event;
 mod ktest;
 mod qemu;
 
@@ -19,6 +20,8 @@ pub fn run() -> Result<()> {
     let args: Vec<String> = env::args().collect();
 
     start_logger(&args)?;
+    let start_event = event::write_start_events(&args)?;
+
     builder::build_image(&args)?;
     let run_duration = qemu::run(&args)?;
 
@@ -26,6 +29,7 @@ pub fn run() -> Result<()> {
         ktest::process_test_results(&args, run_duration)?;
     }
 
+    event::write_end_events(&start_event, &args)?;
     Ok(())
 }
 
