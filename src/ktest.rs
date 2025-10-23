@@ -5,6 +5,9 @@ use std::io::BufRead;
 use crate::{args, event::TestGroupStartedEvent, kview, BUILD_DIRECTORY};
 
 /// A global, thread-safe storage for the test group being processed.
+static USE_KVIEW: OnceLock<RwLock<bool>> = OnceLock::new();
+
+/// A global, thread-safe storage for the test group being processed.
 static TEST_GROUP: OnceLock<RwLock<TestGroup>> = OnceLock::new();
 
 /// Tests from `'ktest` are delivered through the -debugcon device
@@ -54,7 +57,14 @@ pub fn process_test_results(args: &Vec<String>, start_event: &TestGroupStartedEv
     let is_final_group = start_event.current_test_group + 1 >= start_event.total_test_groups;
     if is_final_group {
         process_final_json(args)?;
-        // kview::start_kview_if_needed(args)?;
+        let use_kview = USE_KVIEW.get()
+            .ok_or_else(|| anyhow!("No use_kview flag found after processing test results"))?
+            .read()
+            .map_err(|_| anyhow!("Failed to acquire read lock on use_kview"))?;
+
+        if use_kview.clone() {
+            kview::start_kview_if_needed(args)?;
+        }
     }
 
     Ok(())
@@ -68,8 +78,10 @@ fn process_json_line(line: &str, run_duration: Duration) -> Result<()> {
     
     if json.get("test_group").is_some() {
         let test_group = process_test_group_json(&json, run_duration)?;
-        TEST_GROUP.set(RwLock::new(test_group))
+        TEST_GROUP.set(RwLock::new(test_group.0))
             .map_err(|_| anyhow!("Test group already set"))?;
+        USE_KVIEW.set(RwLock::new(test_group.1))
+            .map_err(|_| anyhow!("Use kview already set"))?;
     } else if json.get("test").is_some() {
         let mut test = process_test_json(&json)?;
         let mut test_group = TEST_GROUP.get()
@@ -94,7 +106,7 @@ fn process_json_line(line: &str, run_duration: Duration) -> Result<()> {
 }
 
 /// Process a JSON object representing a test group and return a TestGroup struct.
-fn process_test_group_json(json: &serde_json::Value, run_duration: Duration) -> Result<TestGroup> {
+fn process_test_group_json(json: &serde_json::Value, run_duration: Duration) -> Result<(TestGroup, bool)> {
     let name = json.get("test_group")
         .and_then(|v| v.as_str())
         .ok_or_else(|| anyhow!("test_group field is missing or not a string"))?
@@ -102,6 +114,9 @@ fn process_test_group_json(json: &serde_json::Value, run_duration: Duration) -> 
     let test_count = json.get("test_count")
         .and_then(|v| v.as_u64())
         .ok_or_else(|| anyhow!("test_count field is missing or not a u64"))?;
+    let use_kview = json.get("use_kview")
+        .and_then(|v| v.as_bool())
+        .unwrap_or(false);
 
     let summary = TestSummary {
         total: test_count,
@@ -111,11 +126,11 @@ fn process_test_group_json(json: &serde_json::Value, run_duration: Duration) -> 
         duration: run_duration.as_millis() as u64
     };
 
-    Ok(TestGroup {
+    Ok((TestGroup {
         test_group: name,
         summary,
         modules: Vec::new()
-    })
+    }, use_kview))
 }
 
 /// Process a JSON object representing a test result and return a TestResult struct.
