@@ -26,7 +26,7 @@ pub fn run() -> Result<()> {
     let run_duration = qemu::run(&args)?;
 
     if args::is_test(&args)? && !args::is_no_ktest(&args) {
-        ktest::process_test_results(&args, run_duration)?;
+        ktest::process_test_results(&args, &start_event, run_duration)?;
     }
 
     event::write_end_events(&start_event, &args)?;

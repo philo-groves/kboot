@@ -2,7 +2,7 @@ use std::{fs, io, sync::{OnceLock, RwLock}, time::Duration};
 use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 use std::io::BufRead;
-use crate::{args, BUILD_DIRECTORY};
+use crate::{args, event::TestGroupStartedEvent, BUILD_DIRECTORY};
 
 /// A global, thread-safe storage for the test group being processed.
 static TEST_GROUP: OnceLock<RwLock<TestGroup>> = OnceLock::new();
@@ -13,7 +13,7 @@ static TEST_GROUP: OnceLock<RwLock<TestGroup>> = OnceLock::new();
 /// 
 /// This function collects those lines and uses the power of 
 /// the standard library to parse them into structured data.
-pub fn process_test_results(args: &Vec<String>, run_duration: Duration) -> Result<()> {
+pub fn process_test_results(args: &Vec<String>, start_event: &TestGroupStartedEvent, run_duration: Duration) -> Result<()> {
     if !args::is_test(args)? { // ignore this for `cargo run` etc
         return Ok(());
     }
@@ -50,6 +50,10 @@ pub fn process_test_results(args: &Vec<String>, run_duration: Duration) -> Resul
 
     serde_json::to_writer_pretty(&test_output_file, &*test_group)?;
     fs::remove_file(&qemu_output_path)?;
+
+    if start_event.current_test_group + 1 >= start_event.total_test_groups {
+        process_final_json(args)?;
+    }
 
     Ok(())
 }
@@ -162,6 +166,30 @@ fn process_summary() -> Result<()> {
     test_group.summary.ignored = test_group.summary.total
         .saturating_sub(test_group.summary.passed + test_group.summary.failed);
     
+    Ok(())
+}
+
+fn process_final_json(args: &Vec<String>) -> Result<()> {
+    let workspace_dir = args::get_workspace_root(&args)?;
+    let testing_dir = workspace_dir.join(BUILD_DIRECTORY).join("testing");
+    let current_time_millis = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)?
+        .as_millis();
+    let timestamped_testing_dir = workspace_dir.join(BUILD_DIRECTORY).join(format!("testing-{}", current_time_millis));
+
+    // create timestamped directory and move all JSON files there
+    fs::create_dir_all(&timestamped_testing_dir)?;
+    for entry in fs::read_dir(&testing_dir)? {
+        let entry = entry?;
+        let path = entry.path();
+        if path.is_file() && path.extension().and_then(|s| s.to_str()) == Some("json") {
+            let file_name = path.file_name().ok_or_else(|| anyhow!("Failed to get file name"))?;
+            let dest_path = timestamped_testing_dir.join(file_name);
+            fs::rename(&path, &dest_path)?;
+        }
+    }
+    fs::remove_dir_all(&testing_dir)?;
+
     Ok(())
 }
 
