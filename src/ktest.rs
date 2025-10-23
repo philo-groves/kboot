@@ -2,7 +2,7 @@ use std::{fs, io, sync::{OnceLock, RwLock}, time::Duration};
 use anyhow::{anyhow, Result};
 use serde::{Deserialize, Serialize};
 use std::io::BufRead;
-use crate::{args, event::TestGroupStartedEvent, BUILD_DIRECTORY};
+use crate::{args, event::TestGroupStartedEvent, kview, BUILD_DIRECTORY};
 
 /// A global, thread-safe storage for the test group being processed.
 static TEST_GROUP: OnceLock<RwLock<TestGroup>> = OnceLock::new();
@@ -51,8 +51,10 @@ pub fn process_test_results(args: &Vec<String>, start_event: &TestGroupStartedEv
     serde_json::to_writer_pretty(&test_output_file, &*test_group)?;
     fs::remove_file(&qemu_output_path)?;
 
-    if start_event.current_test_group + 1 >= start_event.total_test_groups {
+    let is_final_group = start_event.current_test_group + 1 >= start_event.total_test_groups;
+    if is_final_group {
         process_final_json(args)?;
+        // kview::start_kview_if_needed(args)?;
     }
 
     Ok(())

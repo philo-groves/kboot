@@ -6,6 +6,7 @@ mod builder;
 mod args;
 mod event;
 mod ktest;
+mod kview;
 mod qemu;
 
 /// Directory where build artifacts are stored
