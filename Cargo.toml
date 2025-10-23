@@ -1,6 +1,6 @@
 [package]
 name = "kboot"
-version = "0.1.4"
+version = "0.1.5"
 edition = "2024"
 authors = ["Philo Groves <philogroves@gmail.com>"]
 description = "A custom target runner for Rust-based operating system kernels"
@@ -18,5 +18,10 @@ uuid = "1.18.1"
 serde = "1.0.228"
 serde_json = "1.0.145"
 stopwatch = "0.0.7"
+reqwest = { version = "0.12.24", features = ["blocking"] }
 toml = "0.9.8"
 webbrowser = "0.8.0"
+
+[features]
+default = []
+use_local_kview = []
