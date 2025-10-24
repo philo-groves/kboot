@@ -6,24 +6,35 @@ This runner will package the given Rust binary into a bootable UEFI image file, 
 
 **x86_64 is the only currently supported architecture**
 
+## Requirements
+- A Rust-based kernel using the [bootloader](https://github.com/rust-osdev/bootloader) crate
+- Docker
+
+Nothing else! You do not even need QEMU to be installed; it will be managed via Docker.
+
+## Features
+
+- Creates a bootable disk image
+- Runs the image in a Docker-based QEMU intance
+- An event log for tracking state between test groups
+- Restructures the line-by-line JSON from `ktest`:
+  - Counts for pass/fail/ignore are calculated
+  - Tests are grouped by module
+- Test history is packaged by timestamp
+- Automatically launches `kview` after testing
+
 ## Examples
 
 Single Crate: https://github.com/philo-groves/example-kernel-kboot-ktest
 
 Workspace: https://github.com/philo-groves/example-kernel-kboot-ktest-multicrate
 
-## Requirements
-- A Rust-based kernel
-- Docker
-
-Nothing else! You do not even need QEMU to be installed; it will be managed via Docker.
-
 ## Usage
 
 After being set up as a target runner, simple `cargo` commands may be used:
 
 `cargo run`: Builds the image and launches QEMU in normal mode
-`cargo test`: Builds the image and launches QEMU in test mode
+`cargo test` or `cargo hack test --workspace`: Builds the image and launches QEMU in test mode
 
 ## Setup
 
