@@ -2,7 +2,7 @@
 
 A simple Cargo target runner for usage with Rust-based operating system kernels, designed for usage with `ktest` for kernel testing.
 
-This runner will package the given Rust binary into a bootable UEFI image file, and runs the kernel through a containerized version of QEMU. 
+This runner will package the given Rust binary into a bootable image file, and runs the kernel through a containerized version of QEMU. 
 
 **x86_64 is the only currently supported architecture**
 
@@ -22,6 +22,7 @@ Nothing else! You do not even need QEMU to be installed; it will be managed via 
   - Tests are grouped by module
 - Test history is packaged by timestamp
 - Automatically launches `kview` after testing
+- Support for both UEFI and legacy BIOS images (use `--legacy-boot` if needed)
 
 ## Examples
 
