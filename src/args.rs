@@ -130,6 +130,10 @@ pub fn get_qemu_options(args: &Vec<String>) -> Result<Vec<String>> {
     Ok(qemu_options)
 }
 
+pub fn is_legacy_boot(args: &Vec<String>) -> bool {
+    args.iter().any(|arg| arg == "--legacy-boot")
+}
+
 /// Determine whether a ramdisk path has been provided
 pub fn has_ramdisk(args: &Vec<String>) -> bool {
     args.iter().any(|arg| arg == "--ramdisk")

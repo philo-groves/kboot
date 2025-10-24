@@ -36,7 +36,7 @@ pub fn run(args: &Vec<String>) -> Result<Duration> {
 
     // run QEMU in Docker and capture the exit code
     let mut stopwatch = stopwatch::Stopwatch::start_new();
-    let exit_code = run_qemu(&run_args)?;
+    let exit_code = run_qemu(args, &run_args)?;
     stopwatch.stop();
 
     if exit_code == QemuExitCode::Failed as i32 {
@@ -76,10 +76,10 @@ fn setup_test_output(run_args: &mut RunArguments) -> Result<()> {
 }
 
 /// Run QEMU inside a Docker container with the specified arguments.
-fn run_qemu(run_args: &RunArguments)-> Result<i32> {
+fn run_qemu(args: &Vec<String>, run_args: &RunArguments)-> Result<i32> {
     // build the docker command to run the qemu image
     let mut docker_binding = std::process::Command::new("docker");
-    let command_builder = docker_binding
+    let mut command_builder = docker_binding
         .arg("run")                 // docker run command
         .arg("--rm")                // remove the container after it exits
         .arg("-it")                 // interactive terminal during runtime (works with kernel input)
@@ -94,11 +94,16 @@ fn run_qemu(run_args: &RunArguments)-> Result<i32> {
         .arg("--device=/dev/kvm")
         // network device and NET_ADMIN required for network bridge of qemu image
         .arg("--device=/dev/net/tun")
-        .args(["--cap-add", "NET_ADMIN"])
-        // custom -bios file from ovmf_prebuilt crate (renamed to ovmf.fd for simplicity)
-        .arg("-e").arg(&format!("ARGUMENTS=-bios /ovmf.fd {} {}", run_args.qemu_run_args.join(" "), run_args.qemu_test_args.join(" ")))
-        // run qemu in container using a specific version for stability, not latest
-        .arg("qemux/qemu:7.12");
+        .args(["--cap-add", "NET_ADMIN"]);
+
+    if !args::is_legacy_boot(args) {
+        command_builder = command_builder
+            // custom -bios file from ovmf_prebuilt crate (renamed to ovmf.fd for simplicity)
+            .arg("-e").arg(&format!("ARGUMENTS=-bios /ovmf.fd {} {}", run_args.qemu_run_args.join(" "), run_args.qemu_test_args.join(" ")))
+    }
+    
+    // run qemu in container using a specific version for stability, not latest
+    command_builder.arg("qemux/qemu:7.12");
 
     // perform the execution of the run command and capture the exit code
     let exit_code = command_builder.status()?
