@@ -1,5 +1,4 @@
 use std::{path::PathBuf, time::Duration};
-
 use anyhow::{anyhow, Result};
 use crate::{args, BUILD_DIRECTORY, UUID};
 
@@ -114,6 +113,7 @@ const TEST_ARGUMENTS: [&str; 4] = [
     // -debugcon will be conditionally added for tests
 ];
 
+/// A collection of arguments needed to run QEMU in Docker.
 struct RunArguments {
     build_path: PathBuf,
     image_path: PathBuf,
@@ -124,6 +124,7 @@ struct RunArguments {
 }
 
 impl RunArguments {
+    /// Create default RunArguments based on the provided command line arguments.
     fn default(args: &Vec<String>) -> Result<Self> {
         let workspace_directory = args::get_workspace_root(&args)?;
         let build_path = workspace_directory.join(BUILD_DIRECTORY);

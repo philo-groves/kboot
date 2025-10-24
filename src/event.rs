@@ -1,6 +1,7 @@
 use anyhow::Result;
 use crate::{args, BUILD_DIRECTORY};
 
+/// Writes an event to the event log file in compact JSON format.
 pub fn write_event(args: &Vec<String>, event: &dyn Event) {
     use std::io::Write;
     
@@ -14,6 +15,7 @@ pub fn write_event(args: &Vec<String>, event: &dyn Event) {
     writeln!(file, "{}", event_json.replace("\n", "")).unwrap();
 }
 
+/// Writes start events for a test group and possibly a test round.
 pub fn write_start_events(args: &Vec<String>) -> Result<TestGroupStartedEvent> {
     if is_start_of_test_round(args) {
         let round_started_event = TestRoundStartedEvent;
@@ -26,6 +28,7 @@ pub fn write_start_events(args: &Vec<String>) -> Result<TestGroupStartedEvent> {
     Ok(test_group_event)
 }
 
+/// Writes end events for possibly a test round.
 pub fn write_end_events(start_event: &TestGroupStartedEvent, args: &Vec<String>) -> Result<()> {
     if start_event.current_test_group + 1 >= start_event.total_test_groups {
         let round_ended_event = TestRoundEndedEvent;
@@ -35,6 +38,7 @@ pub fn write_end_events(start_event: &TestGroupStartedEvent, args: &Vec<String>)
     Ok(())
 }
 
+/// Reads the event log to determine the current test group index.
 pub fn get_current_test_group(args: &Vec<String>) -> usize {
     use std::io::BufRead;
 
@@ -58,6 +62,7 @@ pub fn get_current_test_group(args: &Vec<String>) -> usize {
     0 // default to first test group
 }
 
+/// Determines the total number of test groups based on the Cargo workspace structure.
 pub fn get_total_test_groups(args: &Vec<String>) -> usize {
     let workspace_dir = args::get_workspace_root(&args).unwrap();
     let manifest_toml_path = workspace_dir.join("Cargo.toml");
@@ -78,6 +83,7 @@ pub fn get_total_test_groups(args: &Vec<String>) -> usize {
     }
 }
 
+/// Determines if the current execution is the start of a new test round.
 pub fn is_start_of_test_round(args: &Vec<String>) -> bool {
     use std::io::BufRead;
     
@@ -98,6 +104,7 @@ pub fn is_start_of_test_round(args: &Vec<String>) -> bool {
     true // first round ever
 }
 
+/// Gets the path to the event log file, creating it if necessary.
 fn get_event_log_path(args: &Vec<String>) -> Result<std::path::PathBuf> {
     let workspace_dir = args::get_workspace_root(&args)?;
     let event_log_path = workspace_dir
@@ -112,6 +119,8 @@ fn get_event_log_path(args: &Vec<String>) -> Result<std::path::PathBuf> {
     Ok(event_log_path)
 }
 
+/// Trait representing a generic event with methods for type, timestamp, 
+/// and JSON serialization.
 pub trait Event {
     fn event_type(&self) -> &str {
         std::any::type_name::<Self>()
@@ -132,14 +141,17 @@ pub trait Event {
     }
 }
 
+/// Event indicating the start of a test round.
 pub struct TestRoundStartedEvent;
 
 impl Event for TestRoundStartedEvent {}
 
+/// Event indicating the end of a test round.
 pub struct TestRoundEndedEvent;
 
 impl Event for TestRoundEndedEvent {}
 
+/// Event indicating the start of a test group within a test round.
 pub struct TestGroupStartedEvent {
     pub current_test_group: usize,
     pub total_test_groups: usize

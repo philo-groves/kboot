@@ -186,6 +186,10 @@ fn process_summary() -> Result<()> {
     Ok(())
 }
 
+/// After all test groups have been processed, this function
+/// moves all individual test JSON files into a timestamped directory.
+/// 
+/// The original testing directory is then removed.
 fn process_final_json(args: &Vec<String>) -> Result<()> {
     let workspace_dir = args::get_workspace_root(&args)?;
     let testing_dir = workspace_dir.join(BUILD_DIRECTORY).join("testing");
@@ -230,6 +234,7 @@ fn function_from_name(name: &str) -> String {
     }
 }
 
+/// TestGroup represents a collection of test modules and their results.
 #[derive(Serialize, Deserialize, Debug)]
 struct TestGroup {
     test_group: String,
@@ -237,6 +242,7 @@ struct TestGroup {
     modules: Vec<TestModule>
 }
 
+/// TestSummary holds aggregate statistics about the test results.
 #[derive(Serialize, Deserialize, Debug)]
 struct TestSummary {
     total: u64,
@@ -246,12 +252,14 @@ struct TestSummary {
     duration: u64
 }
 
+/// TestModule represents a module containing multiple test results.
 #[derive(Serialize, Deserialize, Debug)]
 struct TestModule {
     module: String,
     tests: Vec<TestResult>
 }
 
+/// TestResult represents the outcome of a single test.
 #[derive(Serialize, Deserialize, Debug)]
 struct TestResult {
     test: String,

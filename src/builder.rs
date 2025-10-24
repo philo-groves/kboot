@@ -1,5 +1,3 @@
-//! Builder for creating bootable disk images
-
 use std::fs;
 use anyhow::Result;
 use bootloader::UefiBoot;
