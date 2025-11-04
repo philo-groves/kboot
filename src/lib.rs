@@ -1,4 +1,4 @@
-use std::{env, sync::OnceLock};
+use std::sync::OnceLock;
 use anyhow::Result;
 use uuid::Uuid;
 
@@ -18,25 +18,24 @@ pub static UUID: OnceLock<Uuid> = OnceLock::new();
 /// Main entry point for the kboot runner.
 pub fn run() -> Result<()> {
     UUID.set(Uuid::new_v4()).unwrap();
-    let args: Vec<String> = env::args().collect();
 
-    start_logger(&args)?;
-    let start_event = event::write_start_events(&args)?;
+    start_logger()?;
+    let start_event = event::write_start_events()?;
 
-    builder::build_image(&args)?;
-    let run_duration = qemu::run(&args)?;
+    builder::build_image()?;
+    let run_duration = qemu::run()?;
 
-    if args::is_test(&args)? && !args::is_no_ktest(&args) {
-        ktest::process_test_results(&args, &start_event, run_duration)?;
+    if args::is_test()? && !args::is_no_ktest() {
+        ktest::process_test_results(&start_event, run_duration)?;
     }
 
-    event::write_end_events(&start_event, &args)?;
+    event::write_end_events(&start_event)?;
     Ok(())
 }
 
 /// Simple startup logs to display information about the executable
-fn start_logger(args: &Vec<String>) -> Result<()> {
-    let workspace_dir = args::get_workspace_root(&args)?;
+fn start_logger() -> Result<()> {
+    let workspace_dir = args::get_workspace_root()?;
     let log_file_path = workspace_dir.join(BUILD_DIRECTORY)
         .join("logs")
         .join(format!("kboot-{}.log", UUID.get().unwrap()));
@@ -52,16 +51,16 @@ fn start_logger(args: &Vec<String>) -> Result<()> {
         .start()
         .unwrap();
 
-    log::info!("Initiating kboot runner with arguments: {:?}", args);
+    log::info!("Initiating kboot runner with arguments: {:?}", args::get_arguments());
     log::info!("====================  <executable>  ====================");
-    log::info!("Executable path:             {}", args::get_executable(&args)?.display());
-    log::info!("Executable parent directory: {}", args::get_executable_parent(&args)?.display());
-    log::info!("Is executable a doctest?     {}", args::is_doctest(&args)?);
-    log::info!("Is executable a test?        {}", args::is_test(&args)?);
-    log::info!("Executable file stem:        {}", args::get_file_stem(&args)?);
+    log::info!("Executable path:             {}", args::get_executable()?.display());
+    log::info!("Executable parent directory: {}", args::get_executable_parent()?.display());
+    log::info!("Is executable a doctest?     {}", args::is_doctest()?);
+    log::info!("Is executable a test?        {}", args::is_test()?);
+    log::info!("Executable file stem:        {}", args::get_file_stem()?);
     log::info!("Cargo manifest directory:    {}", args::get_manifest_dir()?.display());
     log::info!("Cargo.toml file path:        {}", args::get_manifest_toml()?.display());
-    log::info!("Current working directory:   {}", args::get_workspace_root(&args)?.display());
+    log::info!("Current working directory:   {}", args::get_workspace_root()?.display());
     log::info!("========================================================");
 
     Ok(())

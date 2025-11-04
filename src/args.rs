@@ -1,8 +1,16 @@
 use anyhow::{anyhow, Result};
-use std::{env, path::PathBuf};
+use std::{env, path::PathBuf, sync::OnceLock};
+
+// Command line arguments
+static ARGUMENTS: OnceLock<Vec<String>> = OnceLock::new();
+
+pub fn get_arguments() -> &'static Vec<String> {
+    ARGUMENTS.get_or_init(|| env::args().collect())
+}
 
 /// Get the executable that should be packaged into an image and ran in QEMU
-pub fn get_executable(args: &Vec<String>) -> Result<PathBuf> {
+pub fn get_executable() -> Result<PathBuf> {
+    let args = get_arguments();
     let args_without_options: Vec<&String> = args.iter()
         .filter(|arg| !arg.starts_with('-'))
         .collect();
@@ -18,8 +26,8 @@ pub fn get_executable(args: &Vec<String>) -> Result<PathBuf> {
 
 /// Get the file stem of the executable that should be packaged 
 /// into an image and ran in QEMU
-pub fn get_file_stem(args: &Vec<String>) -> Result<String> {
-    let exe = get_executable(args)?;
+pub fn get_file_stem() -> Result<String> {
+    let exe = get_executable()?;
     let file_stem = exe.file_stem().ok_or_else(|| anyhow!("Executable has no file stem"))?;
     let file_stem_str = file_stem.to_str().ok_or_else(|| anyhow!("Executable file stem is not valid UTF-8"))?;
     
@@ -28,8 +36,8 @@ pub fn get_file_stem(args: &Vec<String>) -> Result<String> {
 
 /// Get the parent directory of the executable that should be 
 /// packaged into an image and ran in QEMU
-pub fn get_executable_parent(args: &Vec<String>) -> Result<PathBuf> {
-    let exe = get_executable(args)?;
+pub fn get_executable_parent() -> Result<PathBuf> {
+    let exe = get_executable()?;
     let parent = exe.parent().ok_or_else(|| anyhow!("Executable has no parent directory"))?;
     
     Ok(parent.to_path_buf())
@@ -37,8 +45,8 @@ pub fn get_executable_parent(args: &Vec<String>) -> Result<PathBuf> {
 
 /// Get the workspace root directory by traversing up from the executable path 
 /// until the "target" directory is found
-pub fn get_workspace_root(args: &Vec<String>) -> Result<PathBuf> {
-    let executable_binding = get_executable(args)?;
+pub fn get_workspace_root() -> Result<PathBuf> {
+    let executable_binding = get_executable()?;
     let mut executable_path = executable_binding.as_path();
     while let Some(parent) = executable_path.parent() {
         if parent.ends_with("target") {
@@ -55,8 +63,8 @@ pub fn get_workspace_root(args: &Vec<String>) -> Result<PathBuf> {
 
 /// Determine whether the executable is a Rust doctest executable
 /// (i.e., its parent directory starts with "rustdoctest")
-pub fn is_doctest(args: &Vec<String>) -> Result<bool> {
-    return Ok(get_executable_parent(args)?
+pub fn is_doctest() -> Result<bool> {
+    return Ok(get_executable_parent()?
         .file_name()
         .ok_or_else(|| anyhow!("kernel executable's parent has no file name"))?
         .to_str()
@@ -66,10 +74,10 @@ pub fn is_doctest(args: &Vec<String>) -> Result<bool> {
 
 /// Determine whether the executable is a Rust test executable
 /// (i.e., its parent directory is "deps" or it is a doctest executable)
-pub fn is_test(args: &Vec<String>) -> Result<bool> {
-    let parent = get_executable_parent(args)?;
+pub fn is_test() -> Result<bool> {
+    let parent = get_executable_parent()?;
 
-    Ok(is_doctest(args)? || parent.ends_with("deps"))
+    Ok(is_doctest()? || parent.ends_with("deps"))
 }
 
 /// Get the Cargo manifest directory of the current project that is being run
@@ -90,12 +98,14 @@ pub fn get_manifest_toml() -> Result<PathBuf> {
 }
 
 /// Determine whether ktest processing should be skipped
-pub fn is_no_ktest(args: &Vec<String>) -> bool {
+pub fn is_no_ktest() -> bool {
+    let args = get_arguments();
     args.iter().any(|arg| arg == "--no-ktest")
 }
 
 /// Determine whether QEMU options have been provided
-pub fn has_qemu_options(args: &Vec<String>) -> bool {
+pub fn has_qemu_options() -> bool {
+    let args = get_arguments();
     let has_qemu_arg = args.iter().any(|arg| arg == "--qemu");
     
     let mut in_quotes = false;
@@ -120,30 +130,34 @@ pub fn has_qemu_options(args: &Vec<String>) -> bool {
 }
 
 /// Get the QEMU options provided after the `--qemu` flag
-pub fn get_qemu_options(args: &Vec<String>) -> Result<Vec<String>> {
+pub fn get_qemu_options() -> Result<Vec<String>> {
+    let args = get_arguments();
     let qemu_index = args.iter().position(|arg| arg == "--qemu")
         .ok_or_else(|| anyhow!("--qemu not found in arguments"))?;
     
-    let qemu_options = get_quoted_args(args, qemu_index + 1)
+    let qemu_options = get_quoted_args(qemu_index + 1)
         .map_err(|_| anyhow!("--qemu must be followed by quoted QEMU options"))?;
 
     Ok(qemu_options)
 }
 
-pub fn is_legacy_boot(args: &Vec<String>) -> bool {
+pub fn is_legacy_boot() -> bool {
+    let args = get_arguments();
     args.iter().any(|arg| arg == "--legacy-boot")
 }
 
 /// Determine whether a ramdisk path has been provided
-pub fn has_ramdisk(args: &Vec<String>) -> bool {
+pub fn has_ramdisk() -> bool {
+    let args = get_arguments();
     args.iter().any(|arg| arg == "--ramdisk")
 }
 
 /// Get the ramdisk path provided after the `--ramdisk` flag
-pub fn get_ramdisk_path(args: &Vec<String>) -> Result<Option<PathBuf>> {
+pub fn get_ramdisk_path() -> Result<Option<PathBuf>> {
+    let args = get_arguments();
     let ramdisk_index = args.iter().position(|arg| arg == "--ramdisk");
     if let Some(index) = ramdisk_index {
-        let ramdisk_args = get_quoted_args(args, index + 1)
+        let ramdisk_args = get_quoted_args(index + 1)
             .map_err(|_| anyhow!("--ramdisk must be followed by a quoted path"))?;
         
         if ramdisk_args.len() != 1 {
@@ -157,7 +171,8 @@ pub fn get_ramdisk_path(args: &Vec<String>) -> Result<Option<PathBuf>> {
 }
 
 /// Helper function to extract quoted arguments starting from a given index
-fn get_quoted_args(args: &Vec<String>, start_index: usize) -> Result<Vec<String>> {
+fn get_quoted_args(start_index: usize) -> Result<Vec<String>> {
+    let args = get_arguments();
     let mut combined = String::new();
     let mut in_quotes = false;
 

@@ -16,12 +16,12 @@ static TEST_GROUP: OnceLock<RwLock<TestGroup>> = OnceLock::new();
 /// 
 /// This function collects those lines and uses the power of 
 /// the standard library to parse them into structured data.
-pub fn process_test_results(args: &Vec<String>, start_event: &TestGroupStartedEvent, run_duration: Duration) -> Result<()> {
-    if !args::is_test(args)? { // ignore this for `cargo run` etc
+pub fn process_test_results(start_event: &TestGroupStartedEvent, run_duration: Duration) -> Result<()> {
+    if !args::is_test()? { // ignore this for `cargo run` etc
         return Ok(());
     }
 
-    let workspace_dir = args::get_workspace_root(&args)?;
+    let workspace_dir = args::get_workspace_root()?;
     let qemu_output_path = workspace_dir.join(BUILD_DIRECTORY)
         .join("testing")
         .join(format!("tests-{}.json", crate::UUID.get().unwrap()));
@@ -56,14 +56,14 @@ pub fn process_test_results(args: &Vec<String>, start_event: &TestGroupStartedEv
 
     let is_final_group = start_event.current_test_group + 1 >= start_event.total_test_groups;
     if is_final_group {
-        process_final_json(args)?;
+        process_final_json()?;
         let use_kview = USE_KVIEW.get()
             .ok_or_else(|| anyhow!("No use_kview flag found after processing test results"))?
             .read()
             .map_err(|_| anyhow!("Failed to acquire read lock on use_kview"))?;
 
         if use_kview.clone() {
-            kview::start_kview_if_needed(args)?;
+            kview::start_kview_if_needed()?;
         }
     }
 
@@ -190,8 +190,8 @@ fn process_summary() -> Result<()> {
 /// moves all individual test JSON files into a timestamped directory.
 /// 
 /// The original testing directory is then removed.
-fn process_final_json(args: &Vec<String>) -> Result<()> {
-    let workspace_dir = args::get_workspace_root(&args)?;
+fn process_final_json() -> Result<()> {
+    let workspace_dir = args::get_workspace_root()?;
     let testing_dir = workspace_dir.join(BUILD_DIRECTORY).join("testing");
     let current_time_millis = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)?

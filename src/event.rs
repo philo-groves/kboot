@@ -2,10 +2,10 @@ use anyhow::Result;
 use crate::{args, BUILD_DIRECTORY};
 
 /// Writes an event to the event log file in compact JSON format.
-pub fn write_event(args: &Vec<String>, event: &dyn Event) {
+pub fn write_event(event: &dyn Event) {
     use std::io::Write;
     
-    let event_log_path = get_event_log_path(&args).unwrap();
+    let event_log_path = get_event_log_path().unwrap();
     let mut file = std::fs::OpenOptions::new()
         .append(true)
         .open(&event_log_path)
@@ -16,33 +16,33 @@ pub fn write_event(args: &Vec<String>, event: &dyn Event) {
 }
 
 /// Writes start events for a test group and possibly a test round.
-pub fn write_start_events(args: &Vec<String>) -> Result<TestGroupStartedEvent> {
-    if is_start_of_test_round(args) {
+pub fn write_start_events() -> Result<TestGroupStartedEvent> {
+    if is_start_of_test_round() {
         let round_started_event = TestRoundStartedEvent;
-        write_event(&args, &round_started_event);
+        write_event(&round_started_event);
     }
 
-    let test_group_event = TestGroupStartedEvent::new(args);
-    write_event(&args, &test_group_event);
+    let test_group_event = TestGroupStartedEvent::new();
+    write_event(&test_group_event);
 
     Ok(test_group_event)
 }
 
 /// Writes end events for possibly a test round.
-pub fn write_end_events(start_event: &TestGroupStartedEvent, args: &Vec<String>) -> Result<()> {
+pub fn write_end_events(start_event: &TestGroupStartedEvent) -> Result<()> {
     if start_event.current_test_group + 1 >= start_event.total_test_groups {
         let round_ended_event = TestRoundEndedEvent;
-        write_event(&args, &round_ended_event);
+        write_event(&round_ended_event);
     }
 
     Ok(())
 }
 
 /// Reads the event log to determine the current test group index.
-pub fn get_current_test_group(args: &Vec<String>) -> usize {
+pub fn get_current_test_group() -> usize {
     use std::io::BufRead;
 
-    let event_log_path = get_event_log_path(args).unwrap();
+    let event_log_path = get_event_log_path().unwrap();
     let file = std::fs::File::open(&event_log_path).unwrap();
     let reader = std::io::BufReader::new(file);
     let lines: Vec<String> = reader.lines().map(|l| l.unwrap()).collect();
@@ -63,8 +63,8 @@ pub fn get_current_test_group(args: &Vec<String>) -> usize {
 }
 
 /// Determines the total number of test groups based on the Cargo workspace structure.
-pub fn get_total_test_groups(args: &Vec<String>) -> usize {
-    let workspace_dir = args::get_workspace_root(&args).unwrap();
+pub fn get_total_test_groups() -> usize {
+    let workspace_dir = args::get_workspace_root().unwrap();
     let manifest_toml_path = workspace_dir.join("Cargo.toml");
     let manifest_content = std::fs::read_to_string(manifest_toml_path).unwrap();
     let manifest: toml::Value = toml::from_str(&manifest_content).unwrap();
@@ -84,10 +84,10 @@ pub fn get_total_test_groups(args: &Vec<String>) -> usize {
 }
 
 /// Determines if the current execution is the start of a new test round.
-pub fn is_start_of_test_round(args: &Vec<String>) -> bool {
+pub fn is_start_of_test_round() -> bool {
     use std::io::BufRead;
-    
-    let event_log_path = get_event_log_path(&args).unwrap();
+
+    let event_log_path = get_event_log_path().unwrap();
     let file = std::fs::File::open(&event_log_path).unwrap();
     let reader = std::io::BufReader::new(file);
     let lines: Vec<String> = reader.lines().map(|l| l.unwrap()).collect();
@@ -105,8 +105,8 @@ pub fn is_start_of_test_round(args: &Vec<String>) -> bool {
 }
 
 /// Gets the path to the event log file, creating it if necessary.
-fn get_event_log_path(args: &Vec<String>) -> Result<std::path::PathBuf> {
-    let workspace_dir = args::get_workspace_root(&args)?;
+fn get_event_log_path() -> Result<std::path::PathBuf> {
+    let workspace_dir = args::get_workspace_root()?;
     let event_log_path = workspace_dir
         .join(BUILD_DIRECTORY)
         .join("event.log.json");
@@ -158,9 +158,9 @@ pub struct TestGroupStartedEvent {
 }
 
 impl TestGroupStartedEvent {
-    pub fn new(args: &Vec<String>) -> Self {
-        let current_test_group = get_current_test_group(args);
-        let total_test_groups = get_total_test_groups(args);
+    pub fn new() -> Self {
+        let current_test_group = get_current_test_group();
+        let total_test_groups = get_total_test_groups();
 
         Self { current_test_group, total_test_groups }
     }

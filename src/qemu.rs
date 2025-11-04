@@ -7,36 +7,36 @@ use crate::{args, BUILD_DIRECTORY, UUID};
 /// 
 /// The virtual machine is accessible through command line and web (noVNC)
 /// interfaces. The web interface is available at `http://localhost:8006`
-pub fn run(args: &Vec<String>) -> Result<Duration> {
+pub fn run() -> Result<Duration> {
     // check if docker is running, otherwise exit with error
     if !is_docker_running() {
         eprintln!("Docker does not seem to be running. Please start Docker and try again.");
         std::process::exit(1);
     }
 
-    if args::has_qemu_options(args) {
-        log::info!("QEMU options detected: {}", args::get_qemu_options(args)?.join(" "));
+    if args::has_qemu_options() {
+        log::info!("QEMU options detected: {}", args::get_qemu_options()?.join(" "));
     }
 
     // prepare the arguments for running QEMU in Docker
-    let mut run_args = RunArguments::default(args)?;
+    let mut run_args = RunArguments::default()?;
 
     // if the executable is a test executable, add the test arguments
-    if args::is_test(&args)? {
+    if args::is_test()? {
         run_args.qemu_test_args.extend(TEST_ARGUMENTS.iter().map(|s| s.to_string()));
         setup_test_output(&mut run_args)?;
     }
 
     // if custom QEMU arguments are provided, use them
-    if args::has_qemu_options(args) {
-        run_args.qemu_run_args = args::get_qemu_options(args)?;
+    if args::has_qemu_options() {
+        run_args.qemu_run_args = args::get_qemu_options()?;
     }
 
     run_args.print();
 
     // run QEMU in Docker and capture the exit code
     let mut stopwatch = stopwatch::Stopwatch::start_new();
-    let exit_code = run_qemu(args, &run_args)?;
+    let exit_code = run_qemu(&run_args)?;
     stopwatch.stop();
 
     if exit_code == QemuExitCode::Failed as i32 {
@@ -76,7 +76,7 @@ fn setup_test_output(run_args: &mut RunArguments) -> Result<()> {
 }
 
 /// Run QEMU inside a Docker container with the specified arguments.
-fn run_qemu(args: &Vec<String>, run_args: &RunArguments)-> Result<i32> {
+fn run_qemu(run_args: &RunArguments)-> Result<i32> {
     // build the docker command to run the qemu image
     let mut docker_binding = std::process::Command::new("docker");
     let mut command_builder = docker_binding
@@ -96,7 +96,7 @@ fn run_qemu(args: &Vec<String>, run_args: &RunArguments)-> Result<i32> {
         .arg("--device=/dev/net/tun")
         .args(["--cap-add", "NET_ADMIN"]);
 
-    if !args::is_legacy_boot(args) {
+    if !args::is_legacy_boot() {
         command_builder = command_builder
             // custom -bios file from ovmf_prebuilt crate (renamed to ovmf.fd for simplicity)
             .arg("-e").arg(&format!("ARGUMENTS=-bios /ovmf.fd {} {}", run_args.qemu_run_args.join(" "), run_args.qemu_test_args.join(" ")))
@@ -130,8 +130,8 @@ struct RunArguments {
 
 impl RunArguments {
     /// Create default RunArguments based on the provided command line arguments.
-    fn default(args: &Vec<String>) -> Result<Self> {
-        let workspace_directory = args::get_workspace_root(&args)?;
+    fn default() -> Result<Self> {
+        let workspace_directory = args::get_workspace_root()?;
         let build_path = workspace_directory.join(BUILD_DIRECTORY);
         let image_path = build_path.join("kernel.img");
         let testing_path = build_path.join("testing");

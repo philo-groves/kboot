@@ -6,7 +6,7 @@ const REMOTE_TAG: &str = "philogroves/kview:0.1.3";
 const LOCAL_TAG: &str = "philogroves/kview_local:latest";
 
 /// Start the kview docker container if it is not already running.
-pub fn start_kview_if_needed(args: &Vec<String>) -> Result<()> {
+pub fn start_kview_if_needed() -> Result<()> {
     // check if there is a docker image for kview
     if is_docker_container_with_name_running("kview").unwrap_or(false) {
         log::info!("kview docker container is already running.");
@@ -19,11 +19,11 @@ pub fn start_kview_if_needed(args: &Vec<String>) -> Result<()> {
         return Ok(());
     }
 
-    let workspace_directory = args::get_workspace_root(&args)?;
+    let workspace_directory = args::get_workspace_root()?;
     let build_path = workspace_directory.join(BUILD_DIRECTORY);
 
     let image_name = if cfg!(feature = "use_local_kview") {
-        build_kview_image(&args)?;
+        build_kview_image()?;
         LOCAL_TAG
     } else {
         REMOTE_TAG
@@ -72,8 +72,8 @@ fn is_already_running() -> bool {
 }
 
 /// Build the kview Docker image from the local kview directory.
-fn build_kview_image(args: &Vec<String>) -> Result<()> {
-    let workspace_directory = args::get_workspace_root(&args)?;
+fn build_kview_image() -> Result<()> {
+    let workspace_directory = args::get_workspace_root()?;
     let kview_path = workspace_directory.parent().unwrap().join("kview");
 
     log::info!("Building kview docker image...");
