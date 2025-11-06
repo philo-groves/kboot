@@ -79,7 +79,7 @@ fn setup_test_output(run_args: &mut RunArguments) -> Result<()> {
 fn run_qemu(run_args: &RunArguments)-> Result<i32> {
     // build the docker command to run the qemu image
     let mut docker_binding = std::process::Command::new("docker");
-    let mut command_builder = docker_binding
+    let command_builder = docker_binding
         .arg("run")                 // docker run command
         .arg("--rm")                // remove the container after it exits
         .arg("-it")                 // interactive terminal during runtime (works with kernel input)
@@ -88,22 +88,16 @@ fn run_qemu(run_args: &RunArguments)-> Result<i32> {
         // volumes (local filesystem -> container mappings)
         .args(["-v", &format!("{}/qemu-storage:/storage", run_args.build_path.display())])
         .args(["-v", &format!("{}:/boot.img", run_args.image_path.display())])
-        .args(["-v", &format!("{}:/ovmf.fd", run_args.ovmf_path.display())])
         .args(["-v", &format!("{}:/testing/logs", run_args.testing_path.display())])
         // kvm device is required for host communication from the qemu image
         .arg("--device=/dev/kvm")
         // network device and NET_ADMIN required for network bridge of qemu image
         .arg("--device=/dev/net/tun")
-        .args(["--cap-add", "NET_ADMIN"]);
-
-    if !args::is_legacy_boot() {
-        command_builder = command_builder
-            // custom -bios file from ovmf_prebuilt crate (renamed to ovmf.fd for simplicity)
-            .arg("-e").arg(&format!("ARGUMENTS=-bios /ovmf.fd {} {}", run_args.qemu_run_args.join(" "), run_args.qemu_test_args.join(" ")))
-    }
-    
-    // run qemu in container using a specific version for stability, not latest
-    command_builder.arg("qemux/qemu:7.12");
+        .args(["--cap-add", "NET_ADMIN"])
+        // QEMU arguments
+        .arg("-e").arg(&format!("ARGUMENTS={} {}", run_args.qemu_run_args.join(" "), run_args.qemu_test_args.join(" ")))
+        // run qemu in container using a specific version for stability, not latest
+        .arg("qemux/qemu:7.12");
 
     // perform the execution of the run command and capture the exit code
     let exit_code = command_builder.status()?
@@ -122,7 +116,6 @@ const TEST_ARGUMENTS: [&str; 4] = [
 struct RunArguments {
     build_path: PathBuf,
     image_path: PathBuf,
-    ovmf_path: PathBuf,
     testing_path: PathBuf,
     qemu_run_args: Vec<String>,
     qemu_test_args: Vec<String>
@@ -135,12 +128,10 @@ impl RunArguments {
         let build_path = workspace_directory.join(BUILD_DIRECTORY);
         let image_path = build_path.join("kernel.img");
         let testing_path = build_path.join("testing");
-        let ovmf_path = ovmf_prebuilt::ovmf_pure_efi();
 
         Ok(Self {
             build_path,
             image_path,
-            ovmf_path,
             testing_path,
             qemu_run_args: vec![],
             qemu_test_args: vec![]
@@ -151,7 +142,6 @@ impl RunArguments {
         log::info!("=======================  <qemu>  =======================");
         log::info!("Build path:     {}", self.build_path.display());
         log::info!("Image path:     {}", self.image_path.display());
-        log::info!("OVMF path:      {}", self.ovmf_path.display());
         log::info!("Testing path:   {}", self.testing_path.display());
         log::info!("QEMU run args:  {:?}", self.qemu_run_args);
         log::info!("QEMU test args: {:?}", self.qemu_test_args);

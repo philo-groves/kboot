@@ -22,7 +22,7 @@ pub fn run() -> Result<()> {
     start_logger()?;
     let start_event = event::write_start_events()?;
 
-    builder::build_image()?;
+    builder::build_image().unwrap();
     let run_duration = qemu::run()?;
 
     if args::is_test()? && !args::is_no_ktest() {

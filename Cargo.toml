@@ -1,6 +1,6 @@
 [package]
 name = "kboot"
-version = "0.1.6"
+version = "0.1.7"
 edition = "2024"
 authors = ["Philo Groves <philogroves@gmail.com>"]
 description = "A custom target runner for Rust-based operating system kernels"
@@ -11,7 +11,7 @@ repository = "https://github.com/philogroves/kboot"
 anyhow = "1.0.100"
 bootloader = "0.11.12"
 bootloader-boot-config = "0.11.12"
-ovmf-prebuilt = "0.1.0-alpha.1"
+git2 = "0.20.2"
 log = "0.4.28"
 flexi_logger = "0.31.7"
 uuid = "1.18.1"
@@ -21,9 +21,9 @@ stopwatch = "0.0.7"
 reqwest = { version = "0.12.24", features = ["blocking"] }
 toml = "0.9.8"
 webbrowser = "0.8.0"
-
-[dev-dependencies]
-ovmf-prebuilt = "0.1.0-alpha.1"
+fatfs = { version = "0.3.4", default-features = false, features = ["std", "alloc"] }
+gpt = "3.0.0"
+tempfile = "3.3.0"
 
 [features]
 default = []

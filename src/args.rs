@@ -39,25 +39,31 @@ pub fn get_file_stem() -> Result<String> {
 pub fn get_executable_parent() -> Result<PathBuf> {
     let exe = get_executable()?;
     let parent = exe.parent().ok_or_else(|| anyhow!("Executable has no parent directory"))?;
-    
-    Ok(parent.to_path_buf())
+    let absolute_parent = std::path::absolute(parent)?;
+
+    Ok(absolute_parent)
 }
 
 /// Get the workspace root directory by traversing up from the executable path 
 /// until the "target" directory is found
 pub fn get_workspace_root() -> Result<PathBuf> {
-    let executable_binding = get_executable()?;
+    let executable_binding = get_executable_parent()?;
     let mut executable_path = executable_binding.as_path();
+
     while let Some(parent) = executable_path.parent() {
         if parent.ends_with("target") {
             if let Some(workspace_root) = parent.parent() {
-                return Ok(workspace_root.to_path_buf());
+                let absolute_workspace_root = std::path::absolute(workspace_root)?;
+                
+                return Ok(absolute_workspace_root);
             } else {
                 return Err(anyhow!("Workspace root not found"));
             }
         }
         executable_path = parent;
     }
+
+    log::info!("Could not find 'target' directory in executable path, using executable's parent as workspace root");
     Ok(executable_path.to_path_buf())
 }
 
@@ -168,6 +174,69 @@ pub fn get_ramdisk_path() -> Result<Option<PathBuf>> {
     }
 
     Ok(None)
+}
+
+/// Determine which bootloader to use based on command line arguments
+pub fn get_bootloader_selection() -> BootloaderSelection {
+    let args = get_arguments();
+    if args.iter().any(|arg| arg == "--limine") {
+        BootloaderSelection::Limine
+    } else {
+        BootloaderSelection::BootloaderCrate // default
+    }
+}
+
+/// Get the limine.conf by scanning the project directory for it
+pub fn get_limine_conf() -> Result<PathBuf> {
+    let workspace_root = get_workspace_root()?;
+    log::info!("Searching for limine.conf in workspace root: {:?}", workspace_root);
+
+    if let Some(limine_conf) = scan_for_limine_conf(&workspace_root) {
+        Ok(limine_conf)
+    } else {
+        Err(anyhow!("limine.conf not found in workspace"))
+    }
+}
+
+/// Helper to recursively scan a directory for limine.conf file
+fn scan_for_limine_conf(dir: &PathBuf) -> Option<PathBuf> {
+    if let Ok(entries) = std::fs::read_dir(dir) {
+        // First pass: check for limine.conf in current directory
+        for entry in entries.flatten() {
+            let path = entry.path();
+            
+            if path.is_file() {
+                if let Some(file_name) = path.file_name() {
+                    if file_name == "limine.conf" {
+                        return Some(path);
+                    }
+                }
+            }
+        }
+        
+        // Second pass: recurse into subdirectories
+        if let Ok(entries) = std::fs::read_dir(dir) {
+            for entry in entries.flatten() {
+                let path = entry.path();
+                
+                if path.is_dir() {
+                    if let Some(dir_name) = path.file_name().and_then(|n| n.to_str()) {
+                        if dir_name != "target" && dir_name != ".build" && !dir_name.starts_with('.') {
+                            if let Some(found) = scan_for_limine_conf(&path) {
+                                return Some(found);
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    None
+}
+
+pub enum BootloaderSelection {
+    BootloaderCrate,
+    Limine,
 }
 
 /// Helper function to extract quoted arguments starting from a given index
