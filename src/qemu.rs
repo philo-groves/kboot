@@ -86,7 +86,7 @@ fn run_qemu(run_args: &RunArguments)-> Result<i32> {
     #[cfg(not(feature = "ci"))]
     command_builder.arg("-it");     // interactive terminal during runtime (works with kernel input)
     #[cfg(feature = "ci")]
-    command_builder.arg("-i");      // non-interactive terminal for CI environments
+    command_builder.arg("-t");      // non-interactive terminal for CI environments
 
     command_builder.args(["--name", "qemu"])   // name of the container
         .args(["-p", "8006:8006"])  // port 8006 for web display (noVNC)
