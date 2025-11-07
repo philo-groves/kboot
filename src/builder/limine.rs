@@ -132,10 +132,6 @@ fn build_limine_image(builder_args: &BuilderArguments) -> Result<(), BuildError>
 
     let fat_partition = crate::builder::disk::fat::create_fat_filesystem_image(BTreeMap::new(), internal_files).unwrap();
     gpt::create_gpt_disk(&fat_partition.path(), output_image.as_path()).unwrap();
-    // let fat_partition_path = fat_partition.path().to_path_buf();
-
-    // log::info!("Copying FAT from {:?} to {:?}", fat_partition_path, output_image);
-    // fs::copy(&fat_partition_path, &output_image).unwrap();
     
     // Install Limine bootloader
     install_limine(&output_image).unwrap();
@@ -155,6 +151,67 @@ fn install_limine(disk_image: &Path) -> std::io::Result<()> {
     };
     let limine_path = get_workspace_root().unwrap().join(".build").join("limine").join(limine_executable);
     log::info!("Installing Limine bootloader using binary at {}", limine_path.display());
+
+    if !is_windows && !limine_path.exists() {
+        log::info!("Non-windows detected, building Limine from source...");
+
+        let make_check = Command::new("make")
+            .arg("--version")
+            .output();
+        if make_check.is_err() || !make_check.unwrap().status.success() {
+            log::warn!("Make tool not found. Attempting to install make...");
+            #[cfg(target_os = "linux")]
+            {
+                let install_make = Command::new("sudo")
+                    .arg("apt-get")
+                    .arg("install")
+                    .arg("-y")
+                    .arg("make")
+                    .output()?;
+                if !install_make.status.success() {
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::Other,
+                        "Failed to install make tool"
+                    ));
+                }
+            }
+
+            #[cfg(target_os = "macos")]
+            {
+                let install_make = Command::new("brew")
+                    .arg("install")
+                    .arg("make")
+                    .output()?;
+                if !install_make.status.success() {
+                    return Err(std::io::Error::new(
+                        std::io::ErrorKind::Other,
+                        "Failed to install make tool"
+                    ));
+                }
+            }
+
+            let make_check = Command::new("make")
+                .arg("--version")
+                .output();
+            if make_check.is_err() || !make_check.unwrap().status.success() {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::NotFound,
+                    "Make tool not found after installation attempt"
+                ));
+            }
+        }
+
+        let build_output = Command::new("make")
+            .current_dir(limine_path.parent().unwrap())
+            .output()?;
+        if !build_output.status.success() {
+            eprintln!("Failed to build Limine with make: {}", String::from_utf8_lossy(&build_output.stderr));
+            return Err(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                "Failed to build Limine with make"
+            ));
+        }
+    }
 
     // use sh to execute limine command on non-windows platforms
     let output = if is_windows {

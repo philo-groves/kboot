@@ -1,6 +1,6 @@
 [package]
 name = "kboot"
-version = "0.1.10"
+version = "0.1.11"
 edition = "2024"
 authors = ["Philo Groves <philogroves@gmail.com>"]
 description = "A custom target runner for Rust-based operating system kernels"
