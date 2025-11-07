@@ -2,7 +2,7 @@ use anyhow::{anyhow, Result};
 use std::{env, path::PathBuf, sync::OnceLock};
 
 // Command line arguments
-static ARGUMENTS: OnceLock<Vec<String>> = OnceLock::new();
+pub static ARGUMENTS: OnceLock<Vec<String>> = OnceLock::new();
 
 pub fn get_arguments() -> &'static Vec<String> {
     ARGUMENTS.get_or_init(|| env::args().collect())
@@ -266,4 +266,26 @@ fn get_quoted_args(start_index: usize) -> Result<Vec<String>> {
         .split(" ")
         .map(|s| s.trim_start_matches("\"").trim_end_matches("\"").to_string())
         .collect::<Vec<String>>())
+}
+
+#[cfg(test)]
+mod tests {
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn when_get_workspace_root_then_correct() {
+        use super::*;
+        use std::path::PathBuf;
+
+        let current_working_dir = env::current_dir().unwrap();
+
+        let test_executable_path = PathBuf::from("target/debug/my_executable");
+        let test_args = vec![
+            "kboot".to_string(),
+            test_executable_path.to_str().unwrap().to_string(),
+        ];
+        ARGUMENTS.set(test_args).unwrap();
+
+        let workspace_root = get_workspace_root().unwrap();
+        assert_eq!(workspace_root, current_working_dir);
+    }
 }

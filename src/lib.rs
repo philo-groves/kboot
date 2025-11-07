@@ -35,28 +35,13 @@ pub fn run() -> Result<()> {
 
 /// Simple startup logs to display information about the executable
 fn start_logger() -> Result<()> {
-    let workspace_dir = args::get_workspace_root()?;
-    let log_dir = workspace_dir.join(BUILD_DIRECTORY).join("logs");
-    
-    // Ensure the log directory exists
-    std::fs::create_dir_all(&log_dir)?;
-    
-    let log_file_path = log_dir.join(format!("kboot-{}.log", UUID.get().unwrap()));
-    
-    // Try to remove existing file, but don't fail if it doesn't exist or can't be removed
-    let _ = std::fs::remove_file(&log_file_path);
-    
-    let file_spec = flexi_logger::FileSpec::default()
-        .directory(log_file_path.parent().unwrap())
-        .basename(log_file_path.file_stem().unwrap().to_str().unwrap())
-        .suppress_timestamp();
+    let log_file_path = get_log_file_path()?;
 
-    flexi_logger::Logger::try_with_str("info")
-        .unwrap()
-        .log_to_file(file_spec)
-        .write_mode(flexi_logger::WriteMode::BufferAndFlush) // Add explicit write mode
-        .start()
-        .unwrap();
+    if let Some(parent) = log_file_path.parent() && !parent.exists() {
+        std::fs::create_dir_all(parent).unwrap();
+    }
+
+    simple_logging::log_to_file(log_file_path, log::LevelFilter::Info)?;
 
     log::info!("Initiating kboot runner with arguments: {:?}", args::get_arguments());
     log::info!("====================  <executable>  ====================");
@@ -71,4 +56,61 @@ fn start_logger() -> Result<()> {
     log::info!("========================================================");
 
     Ok(())
+}
+
+fn get_log_file_path() -> Result<std::path::PathBuf> {
+    let workspace_dir = args::get_workspace_root()?;
+    let log_file_path = workspace_dir.join(BUILD_DIRECTORY)
+        .join("logs")
+        .join(format!("kboot-{}.log", UUID.get().unwrap()));
+    Ok(log_file_path)
+}
+
+#[cfg(test)]
+mod tests {
+    use std::path::PathBuf;
+    use crate::args::ARGUMENTS;
+    use super::*;
+
+    #[test]
+    fn test_get_log_file_path() {
+        let test_executable_path = PathBuf::from("target/debug/my_executable");
+        let test_args = vec![
+            "kboot".to_string(),
+            test_executable_path.to_str().unwrap().to_string(),
+        ];
+        let _ = ARGUMENTS.set(test_args); // Ignore error if already set by another test
+        let _ = UUID.set(Uuid::new_v4()); // Ignore error if already set by another test
+
+        let path = get_log_file_path().unwrap();
+        assert!(path.to_string_lossy().contains(".build/logs/kboot-"));
+        assert_eq!(path.extension().unwrap(), "log");
+    }
+
+    #[test]
+    pub fn test_simple_logging_initialization() {
+        let test_executable_path = PathBuf::from("target/debug/my_executable");
+        let test_args = vec![
+            "kboot".to_string(),
+            test_executable_path.to_str().unwrap().to_string(),
+        ];
+        let _ = ARGUMENTS.set(test_args); // Ignore error if already set by another test
+
+        let _ = UUID.set(Uuid::new_v4()); // Ignore error if already set by another test
+
+        let log_file_path = get_log_file_path().unwrap();
+
+        // create parent directories if they don't exist
+        if let Some(parent) = log_file_path.parent() {
+            std::fs::create_dir_all(parent).unwrap();
+        }
+
+        let result = simple_logging::log_to_file(log_file_path, log::LevelFilter::Info);
+        // print error details, if any
+        if let Err(e) = &result {
+            eprintln!("Error initializing logger: {}", e);
+        }
+
+        assert!(result.is_ok());
+    }
 }
