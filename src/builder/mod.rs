@@ -11,9 +11,6 @@ pub mod limine;
 pub fn build_image() -> Result<(), BuildError> {
     let builder_args = BuilderArguments::default().map_err(|_| BuildError::DirectoryCreationFailed)?;
 
-    let mut config = bootloader::BootConfig::default();
-    config.log_level = bootloader_boot_config::LevelFilter::Error;
-
     fs::create_dir_all(&builder_args.build_directory).map_err(|_| BuildError::DirectoryCreationFailed)?;
 
     let bootloader: Box<dyn BuilderBootloader> = match args::get_bootloader_selection() {
