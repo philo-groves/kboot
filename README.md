@@ -81,3 +81,9 @@ In your kernel's `ktest` dependency inclusion, enable the `limine` feature:
 [dev-dependencies]
 ktest = { version = "0.1.6", features = ["limine"] }
 ```
+
+### Considerations for Limine
+- Does not yet support the `ktest`-provided allocator
+- Any linker must use `_start` as the entrypoint (if using the `klib!` macro)
+
+When using a kernel with Limine, the kernel is expected to provide a `limine.conf` and comply to Limine within the code. See the [example kernel](https://github.com/philo-groves/example-kernel-kboot-ktest-limine) for implementation details. The `limine.conf` may be provided anywhere in the project; `kboot` will perform a scan of the project and use the first found file with that name.
