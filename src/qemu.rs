@@ -81,9 +81,12 @@ fn run_qemu(run_args: &RunArguments)-> Result<i32> {
     let mut docker_binding = std::process::Command::new("docker");
     let command_builder = docker_binding
         .arg("run")                 // docker run command
-        .arg("--rm")                // remove the container after it exits
-        .arg("-it")                 // interactive terminal during runtime (works with kernel input)
-        .args(["--name", "qemu"])   // name of the container
+        .arg("--rm");               // remove the container after it exits
+        
+    #[cfg(not(feature = "ci"))]
+    command_builder.arg("-it");     // interactive terminal during runtime (works with kernel input)
+
+    command_builder.args(["--name", "qemu"])   // name of the container
         .args(["-p", "8006:8006"])  // port 8006 for web display (noVNC)
         // volumes (local filesystem -> container mappings)
         .args(["-v", &format!("{}/qemu-storage:/storage", run_args.build_path.display())])
