@@ -66,3 +66,18 @@ When QEMU executes (e.g. after `cargo run`), the Docker container is launched in
 Similar to the native display of QEMU, a framebuffer may be drawn to: http://localhost:8006
 
 Under the hood, this uses NoVNC to obtain a remote display connection to the containerized QEMU instance.
+
+## Limine Support
+
+`kboot` and `ktest` both support Limine as an optional bootloader. Both of these programs must have their `limine` feature enabled.
+
+In your `kboot` runner, usually in .cargo/config.toml, use the `--limine` flag:
+```
+kboot --limine
+```
+
+In your kernel's `ktest` dependency inclusion, enable the `limine` feature:
+```
+[dev-dependencies]
+ktest = { version = "0.1.6", features = ["limine"] }
+```
