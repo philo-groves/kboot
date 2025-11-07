@@ -1,5 +1,7 @@
+use std::path::PathBuf;
+
 use anyhow::Result;
-use crate::{args, BUILD_DIRECTORY};
+use crate::BUILD_DIRECTORY;
 
 /// Writes an event to the event log file in compact JSON format.
 pub fn write_event(event: &dyn Event) {
@@ -64,8 +66,7 @@ pub fn get_current_test_group() -> usize {
 
 /// Determines the total number of test groups based on the Cargo workspace structure.
 pub fn get_total_test_groups() -> usize {
-    let workspace_dir = args::get_workspace_root().unwrap();
-    let manifest_toml_path = workspace_dir.join("Cargo.toml");
+    let manifest_toml_path = PathBuf::from("Cargo.toml");
     let manifest_content = std::fs::read_to_string(manifest_toml_path).unwrap();
     let manifest: toml::Value = toml::from_str(&manifest_content).unwrap();
 
@@ -106,9 +107,7 @@ pub fn is_start_of_test_round() -> bool {
 
 /// Gets the path to the event log file, creating it if necessary.
 fn get_event_log_path() -> Result<std::path::PathBuf> {
-    let workspace_dir = args::get_workspace_root()?;
-    let event_log_path = workspace_dir
-        .join(BUILD_DIRECTORY)
+    let event_log_path = PathBuf::from(BUILD_DIRECTORY)
         .join("event.log.json");
 
     std::fs::create_dir_all(event_log_path.parent().unwrap())?;

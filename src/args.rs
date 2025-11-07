@@ -1,6 +1,8 @@
 use anyhow::{anyhow, Result};
 use std::{env, path::PathBuf, sync::OnceLock};
 
+use crate::BUILD_DIRECTORY;
+
 // Command line arguments
 pub static ARGUMENTS: OnceLock<Vec<String>> = OnceLock::new();
 
@@ -176,6 +178,10 @@ pub fn get_ramdisk_path() -> Result<Option<PathBuf>> {
     Ok(None)
 }
 
+pub fn should_clean() -> bool {
+    get_executable().unwrap().to_string_lossy() == "clean"
+}
+
 /// Determine which bootloader to use based on command line arguments
 pub fn get_bootloader_selection() -> BootloaderSelection {
     let args = get_arguments();
@@ -221,7 +227,7 @@ fn scan_for_limine_conf(dir: &PathBuf) -> Option<PathBuf> {
                 
                 if path.is_dir() {
                     if let Some(dir_name) = path.file_name().and_then(|n| n.to_str()) {
-                        if dir_name != "target" && dir_name != ".build" && !dir_name.starts_with('.') {
+                        if dir_name != "target" && dir_name != BUILD_DIRECTORY && !dir_name.starts_with('.') {
                             if let Some(found) = scan_for_limine_conf(&path) {
                                 return Some(found);
                             }

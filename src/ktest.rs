@@ -56,6 +56,9 @@ pub fn process_test_results(start_event: &TestGroupStartedEvent, run_duration: D
 
     let is_final_group = start_event.current_test_group + 1 >= start_event.total_test_groups;
     if is_final_group {
+        // wait 2 seconds for file operations to settle (race caused issues in the past)
+        std::thread::sleep(Duration::from_secs(2));
+
         process_final_json()?;
         let use_kview = USE_KVIEW.get()
             .ok_or_else(|| anyhow!("No use_kview flag found after processing test results"))?

@@ -1,5 +1,5 @@
 use std::{collections::BTreeMap, fs::{self, read_dir}, path::Path, process::Command};
-use crate::{args::{self, get_workspace_root}, builder::{disk::{file_data_source::FileDataSource, gpt}, BuildError, BuilderArguments, BuilderBootloader, DiskImageType}};
+use crate::{BUILD_DIRECTORY, args::{self, get_workspace_root}, builder::{BuildError, BuilderArguments, BuilderBootloader, DiskImageType, disk::{file_data_source::FileDataSource, gpt}}};
 
 pub struct LimineBootloader;
 
@@ -149,7 +149,7 @@ fn install_limine(disk_image: &Path) -> std::io::Result<()> {
     } else {
         "limine"
     };
-    let limine_path = get_workspace_root().unwrap().join(".build").join("limine").join(limine_executable);
+    let limine_path = get_workspace_root().unwrap().join(BUILD_DIRECTORY).join("limine").join(limine_executable);
     log::info!("Installing Limine bootloader using binary at {}", limine_path.display());
 
     if !is_windows && !limine_path.exists() {
