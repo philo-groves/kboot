@@ -1,4 +1,4 @@
-use std::{io::Error, path::PathBuf, sync::OnceLock};
+use std::{io::Error, sync::OnceLock};
 use anyhow::Result;
 use uuid::Uuid;
 
@@ -20,13 +20,13 @@ pub static UUID: OnceLock<Uuid> = OnceLock::new();
 pub fn run() -> Result<(), KbootError> {
     UUID.set(Uuid::new_v4()).unwrap();
 
-    start_logger()?;
-    let start_event = event::write_start_events()
-        .map_err(|e| KbootError::EventFailedToWrite(format!("Failed to write start events: {}", e)))?;
-
     if args::should_clean() {
         return clean::clean();
     }
+
+    start_logger()?;
+    let start_event = event::write_start_events()
+        .map_err(|e| KbootError::EventFailedToWrite(format!("Failed to write start events: {}", e)))?;
 
     builder::build_image().unwrap();
     let run_duration = qemu::run()
@@ -53,14 +53,6 @@ fn start_logger() -> Result<(), KbootError> {
 
     log::info!("Initiating kboot runner with arguments: {:?}", args::get_arguments());
     log::info!("====================  <executable>  ====================");
-    log::info!("Clean mode:                  {:?}", args::should_clean());
-
-    if args::should_clean() {
-        // cut out early if in clean mode
-        log::info!("========================================================");
-        return Ok(());
-    }
-
     log::info!("Executable path:             {}", args::get_executable().map_err(|_| KbootError::ArgumentFailedToParse("Failed to get executable path".to_string()))?.display());
     log::info!("Executable parent directory: {}", args::get_executable_parent().map_err(|_| KbootError::ArgumentFailedToParse("Failed to get executable parent directory".to_string()))?.display());
     log::info!("Is executable a doctest?     {}", args::is_doctest().map_err(|_| KbootError::ArgumentFailedToParse("Failed to determine if executable is a doctest".to_string()))?);
@@ -75,9 +67,13 @@ fn start_logger() -> Result<(), KbootError> {
 }
 
 fn get_log_file_path() -> Result<std::path::PathBuf, KbootError> {
-    let log_file_path = PathBuf::from(BUILD_DIRECTORY)
+    let workspace_directory = args::get_workspace_root()
+        .map_err(|_| KbootError::ArgumentFailedToParse("Failed to get workspace root".to_string()))?;
+
+    let log_file_path = workspace_directory.join(BUILD_DIRECTORY)
         .join("logs")
         .join(format!("kboot-{}.log", UUID.get().unwrap()));
+
     Ok(log_file_path)
 }
 

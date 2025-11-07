@@ -107,7 +107,8 @@ pub fn is_start_of_test_round() -> bool {
 
 /// Gets the path to the event log file, creating it if necessary.
 fn get_event_log_path() -> Result<std::path::PathBuf> {
-    let event_log_path = PathBuf::from(BUILD_DIRECTORY)
+    let workspace_directory = crate::args::get_workspace_root()?;
+    let event_log_path = workspace_directory.join(BUILD_DIRECTORY)
         .join("event.log.json");
 
     std::fs::create_dir_all(event_log_path.parent().unwrap())?;
