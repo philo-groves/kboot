@@ -36,22 +36,25 @@ pub fn run() -> Result<()> {
 /// Simple startup logs to display information about the executable
 fn start_logger() -> Result<()> {
     let workspace_dir = args::get_workspace_root()?;
-    let log_file_path = workspace_dir.join(BUILD_DIRECTORY)
-        .join("logs")
-        .join(format!("kboot-{}.log", UUID.get().unwrap()));
+    let log_dir = workspace_dir.join(BUILD_DIRECTORY).join("logs");
+    
+    // Ensure the log directory exists
+    std::fs::create_dir_all(&log_dir)?;
+    
+    let log_file_path = log_dir.join(format!("kboot-{}.log", UUID.get().unwrap()));
+    
+    // Try to remove existing file, but don't fail if it doesn't exist or can't be removed
+    let _ = std::fs::remove_file(&log_file_path);
+    
     let file_spec = flexi_logger::FileSpec::default()
         .directory(log_file_path.parent().unwrap())
         .basename(log_file_path.file_stem().unwrap().to_str().unwrap())
         .suppress_timestamp();
 
-    if log_file_path.exists() {
-        std::fs::remove_file(&log_file_path)?;
-    }
-
     flexi_logger::Logger::try_with_str("info")
         .unwrap()
         .log_to_file(file_spec)
-        .append()
+        .write_mode(flexi_logger::WriteMode::BufferAndFlush) // Add explicit write mode
         .start()
         .unwrap();
 
