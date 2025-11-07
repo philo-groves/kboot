@@ -44,6 +44,10 @@ fn start_logger() -> Result<()> {
         .basename(log_file_path.file_stem().unwrap().to_str().unwrap())
         .suppress_timestamp();
 
+    if log_file_path.exists() {
+        std::fs::remove_file(&log_file_path)?;
+    }
+
     flexi_logger::Logger::try_with_str("info")
         .unwrap()
         .log_to_file(file_spec)
