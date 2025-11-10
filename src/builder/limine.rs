@@ -133,8 +133,20 @@ fn build_limine_image(builder_args: &BuilderArguments) -> Result<(), BuildError>
     let fat_partition = crate::builder::disk::fat::create_fat_filesystem_image(BTreeMap::new(), internal_files).unwrap();
     gpt::create_gpt_disk(&fat_partition.path(), output_image.as_path()).unwrap();
     
-    // Install Limine bootloader
+    // install Limine bootloader
     install_limine(&output_image).unwrap();
+
+    // print size of image
+    let metadata = fs::metadata(&output_image).unwrap();
+    log::info!("Disk image size: {} bytes", metadata.len());
+
+    // print hash of image
+    use sha2::{Sha256, Digest};
+    let mut file = fs::File::open(&output_image).unwrap();
+    let mut hasher = Sha256::new();
+    std::io::copy(&mut file, &mut hasher).unwrap();
+    let hash = hasher.finalize();
+    log::info!("Disk image SHA-256 hash: {:x}", hash);
 
     fat_partition
         .close().unwrap();
@@ -150,6 +162,7 @@ fn install_limine(disk_image: &Path) -> std::io::Result<()> {
         "limine"
     };
     let limine_path = get_workspace_root().unwrap().join(BUILD_DIRECTORY).join("limine").join(limine_executable);
+    println!("Installing Limine bootloader using binary at {}", limine_path.display());
     log::info!("Installing Limine bootloader using binary at {}", limine_path.display());
 
     if !is_windows && !limine_path.exists() {
@@ -240,6 +253,6 @@ fn install_limine(disk_image: &Path) -> std::io::Result<()> {
         ));
     }
     
-    println!("Limine bootloader installed successfully!");
+    log::info!("Limine bootloader installed successfully!");
     Ok(())
 }
