@@ -109,11 +109,10 @@ fn run_qemu(run_args: &RunArguments)-> Result<i32> {
 }
 
 /// Arguments for QEMU when running tests.
-const TEST_ARGUMENTS: [&str; 7] = [
+const TEST_ARGUMENTS: [&str; 4] = [
     "-device", "isa-debug-exit,iobase=0xf4,iosize=0x04",
     "-no-reboot",
-    "-serial", "stdio", // Try this alone first
-    "-vga", "none"      // Explicitly disable VGA to help Limine choose serial
+    "-nographic"
     // -debugcon will be conditionally added for tests
 ];
 
