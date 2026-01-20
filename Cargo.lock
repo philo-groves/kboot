@@ -753,7 +753,7 @@ dependencies = [
 
 [[package]]
 name = "kboot"
-version = "0.1.17"
+version = "0.1.18"
 dependencies = [
  "anyhow",
  "bootloader",

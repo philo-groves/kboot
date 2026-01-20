@@ -93,11 +93,17 @@ fn run_qemu(run_args: &RunArguments)-> Result<i32> {
         // volumes (local filesystem -> container mappings)
         .args(["-v", &format!("{}/qemu-storage:/storage", run_args.build_path.display())])
         .args(["-v", &format!("{}:/boot.img", run_args.image_path.display())])
-        .args(["-v", &format!("{}:/testing/logs", run_args.testing_path.display())])
-        // kvm device is required for host communication from the qemu image
-        .arg("--device=/dev/kvm")
+        .args(["-v", &format!("{}:/testing/logs", run_args.testing_path.display())]);
+      
+      // kvm device is optimal for host communication from the qemu image
+      if !cfg!(feature = "ci") {
+          command_builder.arg("--device=/dev/kvm");
+      } else {
+          log::warn!("KVM not found, falling back to software emulation (TCG). This will be slower.");
+      }
+
         // network device and NET_ADMIN required for network bridge of qemu image
-        .arg("--device=/dev/net/tun")
+      command_builder.arg("--device=/dev/net/tun")
         .args(["--cap-add", "NET_ADMIN"])
         // QEMU arguments
         .arg("-e").arg(&format!("ARGUMENTS={} {}", run_args.qemu_run_args.join(" "), run_args.qemu_test_args.join(" ")))
