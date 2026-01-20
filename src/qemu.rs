@@ -120,10 +120,9 @@ fn run_qemu(run_args: &RunArguments)-> Result<i32> {
 }
 
 /// Arguments for QEMU when running tests.
-const TEST_ARGUMENTS: [&str; 6] = [
+const TEST_ARGUMENTS: [&str; 4] = [
     "-device", "isa-debug-exit,iobase=0xf4,iosize=0x04",
-    "-display", "none",
-    "-serial", "stdio"
+    "-display", "none"
     // -debugcon will be conditionally added for tests
 ];
 
