@@ -25,7 +25,7 @@ pub fn run() -> Result<Duration> {
     if args::is_test()? {
         run_args.qemu_test_args.extend(TEST_ARGUMENTS.iter().map(|s| s.to_string()));
         setup_test_output(&mut run_args)?;
-    }
+    }    
 
     // if custom QEMU arguments are provided, use them
     if args::has_qemu_options() {
@@ -95,15 +95,18 @@ fn run_qemu(run_args: &RunArguments)-> Result<i32> {
         .args(["-v", &format!("{}:/boot.img", run_args.image_path.display())])
         .args(["-v", &format!("{}:/testing/logs", run_args.testing_path.display())]);
       
-      // kvm device is optimal for host communication from the qemu image
-      if !cfg!(feature = "ci") {
-          command_builder.arg("--device=/dev/kvm");
-      } else {
-          log::warn!("KVM not found, falling back to software emulation (TCG). This will be slower.");
-      }
+    // kvm device is optimal for host communication from the qemu image
+    #[cfg(not(feature = "ci"))]
+    command_builder.arg("--device=/dev/kvm");
 
-        // network device and NET_ADMIN required for network bridge of qemu image
-      command_builder.arg("--device=/dev/net/tun")
+    #[cfg(feature = "ci")] {
+        log::warn!("KVM not found, falling back to software emulation (TCG). This will be slower.");
+        command_builder.args(["-e", "KVM=N"]);
+    }
+      
+
+    // network device and NET_ADMIN required for network bridge of qemu image
+    command_builder.arg("--device=/dev/net/tun")
         .args(["--cap-add", "NET_ADMIN"])
         // QEMU arguments
         .arg("-e").arg(&format!("ARGUMENTS={} {}", run_args.qemu_run_args.join(" "), run_args.qemu_test_args.join(" ")))
@@ -117,9 +120,10 @@ fn run_qemu(run_args: &RunArguments)-> Result<i32> {
 }
 
 /// Arguments for QEMU when running tests.
-const TEST_ARGUMENTS: [&str; 4] = [
+const TEST_ARGUMENTS: [&str; 6] = [
     "-device", "isa-debug-exit,iobase=0xf4,iosize=0x04",
-    "-display", "none"
+    "-display", "none",
+    "-serial", "stdio"
     // -debugcon will be conditionally added for tests
 ];
 
