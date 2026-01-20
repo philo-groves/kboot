@@ -109,13 +109,12 @@ fn run_qemu(run_args: &RunArguments)-> Result<i32> {
 }
 
 /// Arguments for QEMU when running tests.
-const TEST_ARGUMENTS: [&str; 10] = [
+const TEST_ARGUMENTS: [&str; 8] = [
     "-device", "isa-debug-exit,iobase=0xf4,iosize=0x04",
     "-display", "none",
     "-no-reboot",         // Prevents infinite loops on failure
     "-monitor", "none",   // Disables the QEMU monitor to prevent interference
-    "-nographic",
-    "-cpu", "host"        // Since you verified KVM is working
+    "-nographic"
     // -debugcon will be conditionally added for tests
 ];
 
